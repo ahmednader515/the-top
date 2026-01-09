@@ -30,10 +30,18 @@ export async function PATCH(
             return new NextResponse("Not found", { status: 404 });
         }
 
-        const hasPublishedChapters = course.chapters.some((chapter) => chapter.isPublished);
+        // Only validate required fields when publishing (setting to true), not when unpublishing
+        const willBePublished = !course.isPublished;
+        
+        if (willBePublished) {
+            const hasPublishedChapters = course.chapters.some((chapter) => chapter.isPublished);
 
-        if (!course.title || !course.description || !course.imageUrl || !hasPublishedChapters) {
-            return new NextResponse("Missing required fields", { status: 401 });
+            // Price can be 0 (free), but must not be null or undefined
+            const hasValidPrice = course.price !== null && course.price !== undefined;
+
+            if (!course.title || !course.description || !course.imageUrl || !hasValidPrice || !hasPublishedChapters) {
+                return new NextResponse("Missing required fields", { status: 401 });
+            }
         }
 
         const publishedCourse = await db.course.update({

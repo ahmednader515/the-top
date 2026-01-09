@@ -32,11 +32,12 @@ export const Actions = ({
         try {
             setIsLoading(true);
 
+            // Use the same publish route for both publishing and unpublishing (it toggles the state)
+            await axios.patch(`/api/courses/${courseId}/publish`);
+            
             if (isPublished) {
-                await axios.patch(`/api/courses/${courseId}/unpublish`);
                 toast.success("تم إلغاء النشر");
             } else {
-                await axios.patch(`/api/courses/${courseId}/publish`);
                 toast.success("تم نشر الكورس");
             }
 

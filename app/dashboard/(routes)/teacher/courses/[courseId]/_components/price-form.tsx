@@ -15,12 +15,14 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { Course } from "@prisma/client";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/format";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface PriceFormProps {
     initialData: Course;
@@ -29,7 +31,8 @@ interface PriceFormProps {
 }
 
 const formSchema = z.object({
-    price: z.coerce.number()
+    price: z.coerce.number().min(0),
+    isFree: z.boolean().default(false)
 });
 
 export const PriceForm = ({
@@ -47,14 +50,27 @@ export const PriceForm = ({
         resolver: zodResolver(formSchema),
         defaultValues: {
             price: initialData?.price ?? 0,
+            isFree: (initialData?.price ?? 0) === 0,
         }
     });
 
     const { isSubmitting, isValid } = form.formState;
+    const isFree = form.watch("isFree");
+
+    // When isFree is checked, set price to 0
+    useEffect(() => {
+        if (isFree) {
+            form.setValue("price", 0);
+        }
+    }, [isFree, form]);
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            await axios.patch(`/api/courses/${courseId}`, values);
+            // Only send price to API (isFree is just for UI)
+            const updateData = {
+                price: values.isFree ? 0 : values.price
+            };
+            await axios.patch(`/api/courses/${courseId}`, updateData);
             toast.success("تم تحديث الكورس");
             toggleEdit();
             router.refresh();
@@ -93,6 +109,31 @@ export const PriceForm = ({
             {isEditing && (
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
+                        <div className="flex items-center space-x-2 space-x-reverse mb-4">
+                            <FormField
+                                control={form.control}
+                                name="isFree"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-x-reverse space-y-0">
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                disabled={isSubmitting}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <Label
+                                                htmlFor="isFree"
+                                                className="font-normal cursor-pointer"
+                                            >
+                                                مجاني
+                                            </Label>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                         <FormField 
                             control={form.control}
                             name="price"
@@ -102,7 +143,7 @@ export const PriceForm = ({
                                         <Input 
                                             type="number"
                                             step="0.01"
-                                            disabled={isSubmitting}
+                                            disabled={isSubmitting || isFree}
                                             placeholder="ضع سعر للكورس"
                                             value={field.value || ''}
                                             onChange={(e) => {
@@ -116,7 +157,7 @@ export const PriceForm = ({
                             )}
                         />
                         <div className="flex items-center gap-x-2">
-                            <Button disabled={!isValid || isSubmitting} type="submit">
+                            <Button disabled={isSubmitting} type="submit">
                                 حفظ
                             </Button>
                         </div>

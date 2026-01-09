@@ -58,7 +58,7 @@ export default async function AdminCourseIdPage({
         course.title,
         course.description,
         course.imageUrl,
-        course.price,
+        course.price !== null && course.price !== undefined, // Price can be 0 (free)
         course.grade,
         course.subject,
         course.chapters.some(chapter => chapter.isPublished)
